@@ -42,6 +42,22 @@ Ray provides a **unified distributed computing framework ** that replaces fragme
 - Github Actions CI for linting, type checks, and tests
 - Portfolio-ready architecture diagrams
 
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|----|----|
+| Language | Python 3.10+ |
+| Distributed Computing | Ray |
+| ML Frameworks | PyTorch, TensorFlow, scikit-learn |
+| Experiment Tracking | MLflow |
+| Model Serving | FastAPI + Ray Serve|
+| Dev Environment | VS Code |
+| Version Control | GitHub |
+| Cloud (Optional) | AWS EC2 |
+| Hardware | Apple Silicon (M-series) |
+
 
 ---
 

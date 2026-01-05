@@ -1,81 +1,82 @@
-# =========================
-# RayScaleML Makefile
-# =========================
+.PHONY: help install setup-dev lint format typecheck test clean data preprocess train tune serve
 
 # Default number of synthetic rows
-ROWS ?= 1000000
+ROWS ?= 100000
 
-# Virtual environment activation
-VENV_ACTIVATE = source /opt/homebrew/Caskroom/miniforge/base/envs/ml_env/bin/activate
-#$(HOME)/.virtualenvs/ml_env/bin/activate
+# Colors for output
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+RED := \033[0;31m
+NC := \033[0m # No Color
 
-# -------------------------
-# 1. Generate synthetic data
-# -------------------------
-data:
-	$(VENV_ACTIVATE) && python data/synthetic_generator.py --rows $(ROWS)
+help:  ## Display this help message
+	@echo "Available commands:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${YELLOW}%-20s${NC} %s\n", $$1, $$2}'
 
-# -------------------------
-# 2. Preprocess data
-# -------------------------
-preprocess:
-	$(VENV_ACTIVATE) && python src/data/preprocessing.py
-	$(VENV_ACTIVATE) && python src/data/feature_engineering.py
+install:  ## Install package in development mode
+	@echo "${GREEN}Installing package in development mode...${NC}"
+	pip install -e .[dev]
 
-# -------------------------
-# 3. Train model
-# -------------------------
-train:
-	$(VENV_ACTIVATE) && python src/training/train_ray.py
+setup-dev: install  ## Set up development environment
+	@echo "${GREEN}Setting up development environment...${NC}"
+	pre-commit install
 
-# -------------------------
-# 4. Hyperparameter tuning
-# -------------------------
-tune:
-	$(VENV_ACTIVATE) && python src/training/tune_ray.py
+data:  ## Generate synthetic data
+	@echo "${GREEN}Generating synthetic data...${NC}"
+	python scripts/generate_synthetic_data.py --rows $(ROWS)
 
-# -------------------------
-# 5. Start API server
-# -------------------------
-serve:
-	$(VENV_ACTIVATE) && python src/serving/serve_app.py
+preprocess:  ## Preprocess data
+	@echo "${GREEN}Preprocessing data...${NC}"
+	python -m src.data.preprocessing
 
-# -------------------------
-# 6. Run full ML pipeline
-# -------------------------
-all: data preprocess train tune serve
+train:  ## Train model with default configuration
+	@echo "${GREEN}Training model...${NC}"
+	python scripts/train_model.py --config configs/training/base.yaml
 
-# -------------------------
-# 7. Code formatting (Black)
-# -------------------------
-lint-format:
-	$(VENV_ACTIVATE) && black src tests notebooks
+tune:  ## Run hyperparameter tuning
+	@echo "${GREEN}Running hyperparameter tuning...${NC}"
+	python -m src.training.pipelines.tune_pipeline --config configs/training/tune.yaml
 
-# -------------------------
-# 8. Lint code (Ruff)
-# -------------------------
-lint:
-	$(VENV_ACTIVATE) && ruff src tests
+serve:  ## Start API server
+	@echo "${GREEN}Starting API server...${NC}"
+	python scripts/serve_local.py
 
-# -------------------------
-# 9. Type checking (Mypy)
-# -------------------------
-typecheck:
-	$(VENV_ACTIVATE) && mypy src
+lint:  ## Run linting with ruff
+	@echo "${GREEN}Running linting...${NC}"
+	ruff check src tests scripts
+	ruff format --check src tests scripts
 
-# -------------------------
-# 10. Run tests (Pytest)
-# -------------------------
-test:
-	$(VENV_ACTIVATE) && pytest tests --cov=src
+format:  ## Format code with black and ruff
+	@echo "${GREEN}Formatting code...${NC}"
+	black src tests scripts
+	ruff check --fix src tests scripts
+	ruff format src tests scripts
 
-# -------------------------
-# 11. Clean temporary/cache files
-# -------------------------
-clean:
-	rm -rf __pycache__ */__pycache__ */*/__pycache__ */*/*/__pycache__
+typecheck:  ## Run type checking with mypy
+	@echo "${GREEN}Running type checking...${NC}"
+	mypy src
 
-# -------------------------
-# 12. Full dev check (lint + typecheck + test)
-# -------------------------
-check: lint typecheck test
+test:  ## Run tests with coverage
+	@echo "${GREEN}Running tests...${NC}"
+	pytest tests/ -v --cov=src --cov-report=term-missing
+
+test-ci:  ## Run tests for CI
+	@echo "${GREEN}Running CI tests...${NC}"
+	pytest tests/ -v --cov=src --cov-report=xml --junitxml=junit.xml
+
+clean:  ## Clean temporary files and caches
+	@echo "${GREEN}Cleaning up...${NC}"
+	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -delete
+	find . -type f -name "*.pyo" -delete
+	find . -type f -name ".coverage" -delete
+	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name "dist" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name "build" -exec rm -rf {} + 2>/dev/null || true
+
+all-checks: lint typecheck test  ## Run all checks (lint, typecheck, test)
+
+pipeline: data preprocess train  ## Run full ML pipeline

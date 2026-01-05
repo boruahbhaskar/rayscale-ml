@@ -1,7 +1,3 @@
-# ===============================
-# RayScaleML pyproject.toml
-# ===============================
-
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -9,59 +5,86 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "rayscale-ml"
 version = "0.1.0"
-description = "End-to-end distributed ML platform using Ray, optimized for Apple Silicon (M-series)."
+description = "End-to-end distributed ML platform using Ray, MlFlow, optimized for Apple Silicon (M-series)."
 authors = [
     {name = "Bhaskar Boruah", email = "boruah.bhaskar@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 
-[project.dependencies]
-python-dotenv = ">=1.0.0"
-pydantic = ">=2.5.0"
-pyyaml = ">=6.0.1"
-loguru = ">=0.7.2"
-ray = ">=2.9.0"
-numpy = ">=1.26.0"
-pandas = ">=2.1.0"
-pyarrow = ">=14.0.1"
-scikit-learn = ">=1.3.2"
-torch = ">=2.1.0"
-torchvision = ">=0.16.0"
-tensorflow = ">=2.14.0"
-tensorflow-metal = ">=1.1.0"
-mlflow = ">=2.8.0"
-fastapi = ">=0.104.0"
-uvicorn = ">=0.24.0"
-pytest = ">=7.4.3"
-black = ">=23.10.0"
-ruff = ">=0.1.6"
-mypy = ">=1.7.0"
-pytest-cov = ">=4.1.0"
+[project.urls]
+Homepage = "https://github.com/boruahbhaskar/rayscale-ml"
+Repository = "https://github.com/boruahbhaskar/rayscale-ml"
+Issues = "https://github.com/boruahbhaskar/rayscale-ml/issues"
 
-# -------------------------------
-# Black code formatter config
-# -------------------------------
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.3",
+    "pytest-cov>=4.1.0",
+    "black>=23.10.0",
+    "ruff>=0.1.6",
+    "mypy>=1.7.0",
+    "pre-commit>=4.5.1",
+]
+
+[project.scripts]
+rayscale-train = "src.main:train_cli"
+rayscale-serve = "src.main:serve_cli"
+rayscale-tune = "src.main:tune_cli"
+
 [tool.black]
 line-length = 88
 target-version = ["py310"]
 skip-string-normalization = true
 
-# -------------------------------
-# Ruff linter config
-# -------------------------------
 [tool.ruff]
 line-length = 88
-select = ["E", "F", "W", "C90"]
-ignore = []
-per-file-ignores = { "__init__.py" = ["F401"] }
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+]
 
-# -------------------------------
-# Mypy type checker config
-# -------------------------------
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]  # unused import
+
 [tool.mypy]
 python_version = 3.10
-ignore_missing_imports = true
-strict = true
+warn_return_any = true
 warn_unused_configs = true
-show_error_codes = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=src --cov-report=term-missing --cov-report=html"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::FutureWarning",
+]

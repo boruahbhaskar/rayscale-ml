@@ -91,38 +91,57 @@ class Preprocessor:
         
         logger.info("Transforming dataset")
         
+        # Extract local variables to avoid capturing self
+        stats = self._stats
+        clip_outliers = self.clip_outliers
+        clip_threshold = self.clip_threshold
+        scaling_method = self.scaling_method
+        
         def apply_transforms(batch: pd.DataFrame) -> pd.DataFrame:
             """Apply preprocessing transforms to a batch."""
             batch = batch.copy()
             
-            for col, stats in self._stats.items():
+            # Track which original columns to drop
+            columns_to_drop = []
+            
+            for col, col_stats in stats.items():
                 if col in batch.columns:
                     # Clip outliers
-                    if self.clip_outliers:
+                    if clip_outliers:
                         z_scores = np.abs(
-                            (batch[col] - stats["mean"]) / max(stats["std"], 1e-8)
+                            (batch[col] - col_stats["mean"]) / max(col_stats["std"], 1e-8)
                         )
-                        batch.loc[z_scores > self.clip_threshold, col] = np.nan
+                        batch.loc[z_scores > clip_threshold, col] = np.nan
                         batch[col] = batch[col].fillna(
-                            np.sign(batch[col] - stats["mean"]) * 
-                            self.clip_threshold * stats["std"] + stats["mean"]
+                            np.sign(batch[col] - col_stats["mean"]) * 
+                            clip_threshold * col_stats["std"] + col_stats["mean"]
                         )
                     
-                    # Apply scaling
-                    if self.scaling_method == "standard":
-                        batch[f"{col}_norm"] = (
-                            (batch[col] - stats["mean"]) / max(stats["std"], 1e-8)
+                    # Apply scaling - create new column only if it doesn't already have _norm suffix
+                    output_col = col if col.endswith("_norm") else f"{col}_norm"
+                    
+                    # Only mark original column for dropping if we're creating a new normalized column
+                    if output_col != col:
+                        columns_to_drop.append(col)
+                    
+                    if scaling_method == "standard":
+                        batch[output_col] = (
+                            (batch[col] - col_stats["mean"]) / max(col_stats["std"], 1e-8)
                         )
-                    elif self.scaling_method == "minmax":
-                        batch[f"{col}_norm"] = (
-                            (batch[col] - stats["min"]) / 
-                            max(stats["max"] - stats["min"], 1e-8)
+                    elif scaling_method == "minmax":
+                        batch[output_col] = (
+                            (batch[col] - col_stats["min"]) / 
+                            max(col_stats["max"] - col_stats["min"], 1e-8)
                         )
-                    elif self.scaling_method == "robust":
-                        batch[f"{col}_norm"] = (
-                            (batch[col] - stats["q25"]) / 
-                            max(stats["q75"] - stats["q25"], 1e-8)
+                    elif scaling_method == "robust":
+                        batch[output_col] = (
+                            (batch[col] - col_stats["q25"]) / 
+                            max(col_stats["q75"] - col_stats["q25"], 1e-8)
                         )
+            
+            # Drop original columns (only if they're in the batch and not already normalized)
+            columns_to_drop = [col for col in columns_to_drop if col in batch.columns]
+            batch = batch.drop(columns=columns_to_drop)
             
             return batch
         
@@ -131,9 +150,11 @@ class Preprocessor:
             batch_format="pandas"
         )
         
-        logger.info(f"Transformed dataset with {transformed.count()} rows")
+        logger.info("Dataset transformation completed")
+        count = transformed.count()
+        logger.info(f"Transformed dataset with {count} rows")
         return transformed
-    
+        
     def fit_transform(self, dataset: rd.Dataset) -> rd.Dataset:
         """
         Fit preprocessor and transform dataset.
@@ -221,6 +242,9 @@ def preprocess_pipeline(
     # Load data
     dataset = data_source.load_data()
     
+    # Validate raw data schema
+    validate_dataset_schema(dataset, is_processed=False)
+    
     # Validate data
     if not data_source.validate(dataset):
         raise ValueError("Data validation failed")
@@ -228,9 +252,10 @@ def preprocess_pipeline(
     # Create and fit preprocessor
     preprocessor = Preprocessor(**kwargs)
     processed_dataset = preprocessor.fit_transform(dataset)
+
+    # Validate processed schema with is_processed=True
+    validate_dataset_schema(processed_dataset, is_processed=True)
     
-    # Validate processed schema
-    validate_dataset_schema(processed_dataset)
     
     # Save processed data
     output_path.parent.mkdir(parents=True, exist_ok=True)

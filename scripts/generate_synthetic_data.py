@@ -11,6 +11,7 @@ from loguru import logger
 
 from src.config import settings
 from src.utils.logging import configure_logging
+from src.config.constants import FEATURE_COLUMNS
 
 
 def generate_synthetic_data(
@@ -59,7 +60,8 @@ def generate_synthetic_data(
     # Create DataFrame
     df = pd.DataFrame(
         features,
-        columns=[f"feature_{i+1}" for i in range(num_features)]
+        columns=FEATURE_COLUMNS # [f"feature_{i+1}" for i in range(num_features)]
+        #columns = [f"feature_{i+1}_norm" for i in range(num_features-2)] + ["feature_3", "feature_4"]
     )
     df["target"] = target_binary
     df["id"] = range(num_rows)

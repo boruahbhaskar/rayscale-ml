@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any
 from pathlib import Path
-
+import pandas as pd
 import ray.data as rd
 from loguru import logger
 
@@ -93,18 +93,28 @@ class ParquetDataSource(DataSource):
             # Check schema if validation is enabled
             if self.schema_validation:
                 validate_dataset_schema(dataset)
+
+            # Check for null values - process all columns at once
+            def count_nulls_in_batch(df: pd.DataFrame):
+                """Count nulls for all columns in a batch."""
+                null_counts = {}
+                for col in df.columns:
+                    null_counts[f"{col}_nulls"] = df[col].isnull().sum()
+                return pd.DataFrame([null_counts])
             
-            # Check for null values in features
-            for column in dataset.columns():
-                null_count = dataset.map_batches(
-                    lambda df: df[column].isnull().sum(),
-                    batch_format="pandas"
-                ).sum()
-                
+            # Get null counts for all columns
+            null_counts_df = dataset.map_batches(
+                count_nulls_in_batch,
+                batch_format="pandas"
+            ).to_pandas()
+            
+            # Sum across all batches
+            for col in dataset.columns():
+                null_count = null_counts_df[f"{col}_nulls"].sum()
                 if null_count > 0:
                     logger.warning(
-                        f"Column {column} has {null_count} null values"
-                    )
+                        f"Column {col} has {int(null_count)} null values"
+                    )        
             
             logger.info("Dataset validation passed")
             return True

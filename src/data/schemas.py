@@ -9,6 +9,7 @@ from src.config.constants import (
     FEATURE_COLUMNS,
     TARGET_COLUMN,
     ID_COLUMN,
+    TIMESTAMP_COLUMN,
     FeatureType,
 )
 
@@ -118,9 +119,36 @@ def get_feature_schema() -> pa.Schema:
         (FEATURE_COLUMNS[1], pa.float32()),
         (FEATURE_COLUMNS[2], pa.float32()),
         (FEATURE_COLUMNS[3], pa.float32()),
+        (TIMESTAMP_COLUMN, pa.timestamp('s')),  # Add this
         (TARGET_COLUMN, pa.int64()),
     ])
 
+
+def get_processed_schema() -> pa.Schema:
+    """
+    Get PyArrow schema for processed (normalized) features.
+    
+    Returns:
+        PyArrow schema for the processed dataset.
+    """
+    # Create normalized column names
+    # If a column already ends with '_norm', don't add another '_norm'
+    processed_features = []
+    for feature in FEATURE_COLUMNS:
+        if feature.endswith('_norm'):
+            processed_features.append(feature)  # Already normalized
+        else:
+            processed_features.append(f"{feature}_norm")  # Add _norm suffix
+    
+    return pa.schema([
+        (ID_COLUMN, pa.int64()),
+        (processed_features[0], pa.float32()),
+        (processed_features[1], pa.float32()),
+        (processed_features[2], pa.float32()),
+        (processed_features[3], pa.float32()),
+        (TIMESTAMP_COLUMN, pa.timestamp('s')),
+        (TARGET_COLUMN, pa.int64()),
+    ])
 
 # def validate_dataset_schema(dataset) -> None:
 #     """
@@ -322,20 +350,31 @@ def get_feature_schema() -> pa.Schema:
 #     logger.info("Dataset schema validation passed")
 
 
-def validate_dataset_schema(dataset) -> None:
+def validate_dataset_schema(dataset, is_processed: bool = False) -> None:
     """
     Validate dataset schema against expected schema.
     
     Args:
         dataset: Ray dataset to validate.
+        is_processed: Whether to validate against processed schema.
         
     Raises:
         ValueError: If schema doesn't match.
     """
     from loguru import logger
     
-    expected_schema = get_feature_schema()
+    # Choose the appropriate schema
+    if is_processed:
+        expected_schema = get_processed_schema()
+        logger.debug("Validating against processed schema")
+    else:
+        expected_schema = get_feature_schema()
+        logger.debug("Validating against raw schema")
+    
     actual_schema = dataset.schema()
+    
+    logger.debug(f"Expected schema: {expected_schema}")
+    logger.debug(f"Actual schema: {actual_schema}")
     
     logger.debug(f"Expected schema: {expected_schema}")
     logger.debug(f"Actual schema: {actual_schema}")
@@ -418,6 +457,11 @@ def validate_dataset_schema(dataset) -> None:
         # Normalize both types for comparison
         expected_norm = normalize_type_name(expected_type)
         actual_norm = normalize_type_name(actual_type_str)
+
+        # Special handling for timestamps
+        if 'timestamp' in expected_norm.lower() and 'timestamp' in actual_norm.lower():
+            # Both are timestamps - allow any precision
+            continue
         
         # Allow some type flexibility:
         # - float32 <-> float64 (both are floating point)
@@ -445,7 +489,7 @@ def validate_dataset_schema(dataset) -> None:
         raise ValueError(error_msg)
     
     logger.info("Dataset schema validation passed")
-    
+
 class TrainingDataSchema(BaseModel):
     """Schema for training data."""
     

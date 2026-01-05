@@ -147,9 +147,110 @@ class FeatureStore:
         partitions = []
         for part in path.parts:
             if "=" in part:
-                partitions.append(part.split("=")[0])
+                partition_col = part.split("=")[0]
+                # Version directories (v=...) are metadata, not data partitions
+                # Also exclude other single-letter directories that might be metadata
+                if partition_col not in ["v", "version"]:
+                    partitions.append(partition_col)
         return partitions
     
+    # def write_dataset(
+    #     self,
+    #     dataset: rd.Dataset,
+    #     name: str,
+    #     version: str = "latest",
+    #     description: Optional[str] = None,
+    #     tags: Optional[Dict[str, str]] = None,
+    #     partition_cols: Optional[List[str]] = None,
+    #     compute_stats: bool = True
+    # ) -> str:
+    #     """
+    #     Write dataset with versioning and metadata.
+        
+    #     Args:
+    #         dataset: Dataset to write.
+    #         name: Dataset name.
+    #         version: Dataset version.
+    #         description: Dataset description.
+    #         tags: Dataset tags.
+    #         partition_cols: Columns to partition by.
+    #         compute_stats: Whether to compute feature statistics.
+            
+    #     Returns:
+    #         Version ID of written dataset.
+            
+    #     Raises:
+    #         FeatureStoreError: If writing fails.
+    #     """
+    #     try:
+    #         logger.info(f"Writing dataset {name} version {version}")
+            
+    #         # Generate version ID
+    #         if version == DatasetVersion.LATEST:
+    #             version_id = str(uuid.uuid4())[:8]
+    #         elif version == DatasetVersion.TIMESTAMP:
+    #             version_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    #         elif version == DatasetVersion.UUID:
+    #             version_id = str(uuid.uuid4())
+    #         else:
+    #             version_id = version
+            
+    #         # Create output path
+    #         output_path = self.base_path / name / f"v={version_id}"
+    #         output_path.mkdir(parents=True, exist_ok=True)
+            
+    #         # Write dataset
+    #         if partition_cols:
+    #             # Check partition columns exist
+    #             missing_cols = [
+    #                 col for col in partition_cols 
+    #                 if col not in dataset.columns()
+    #             ]
+    #             if missing_cols:
+    #                 raise FeatureStoreError(
+    #                     f"Partition columns not found: {missing_cols}"
+    #                 )
+                
+    #             dataset.write_parquet(
+    #                 str(output_path),
+    #                 partition_cols=partition_cols
+    #             )
+    #         else:
+    #             dataset.write_parquet(str(output_path))
+            
+    #         # Compute metadata
+    #         schema_dict = {
+    #             field.name: str(field.type)
+    #             for field in dataset.schema()
+    #         }
+            
+    #         partitions = self._get_partitions(output_path)
+            
+    #         metadata = DatasetMetadata(
+    #             version=version_id,
+    #             schema=schema_dict,
+    #             feature_stats=self._compute_stats(dataset) if compute_stats else {},
+    #             created_at=datetime.now().isoformat(),
+    #             num_rows=dataset.count(),
+    #             partitions=partitions,
+    #             description=description,
+    #             tags=tags or {}
+    #         )
+            
+    #         # Save metadata
+    #         self._save_metadata(name, version_id, metadata)
+            
+    #         logger.info(
+    #             f"Successfully wrote dataset {name} version {version_id} "
+    #             f"with {metadata.num_rows} rows"
+    #         )
+            
+    #         return version_id
+            
+    #     except Exception as e:
+    #         logger.error(f"Failed to write dataset {name}: {str(e)}")
+    #         raise FeatureStoreError(f"Failed to write dataset: {str(e)}")
+        
     def write_dataset(
         self,
         dataset: rd.Dataset,
@@ -214,11 +315,24 @@ class FeatureStore:
             else:
                 dataset.write_parquet(str(output_path))
             
-            # Compute metadata
-            schema_dict = {
-                field.name: str(field.type)
-                for field in dataset.schema()
-            }
+            # FIX: Properly extract schema from Ray Dataset
+            schema = dataset.schema()
+            
+            # Handle different schema representations in Ray
+            if hasattr(schema, 'names') and hasattr(schema, 'types'):
+                # Ray 2.6+ format: schema has names and types attributes
+                schema_dict = dict(zip(schema.names, [str(t) for t in schema.types]))
+            elif hasattr(schema, 'to_arrow_schema'):
+                # Convert to PyArrow schema
+                arrow_schema = schema.to_arrow_schema()
+                schema_dict = {field.name: str(field.type) for field in arrow_schema}
+            elif hasattr(schema, 'arrow_schema'):
+                # Access PyArrow schema directly
+                arrow_schema = schema.arrow_schema
+                schema_dict = {field.name: str(field.type) for field in arrow_schema}
+            else:
+                # Fallback: use column names with unknown types
+                schema_dict = {col: "unknown" for col in dataset.columns()}
             
             partitions = self._get_partitions(output_path)
             
@@ -245,7 +359,7 @@ class FeatureStore:
             
         except Exception as e:
             logger.error(f"Failed to write dataset {name}: {str(e)}")
-            raise FeatureStoreError(f"Failed to write dataset: {str(e)}")
+            raise FeatureStoreError(f"Failed to write dataset: {str(e)}")    
     
     def read_dataset(
         self,

@@ -41,6 +41,8 @@ LOGS_PATH = Path("logs")
 FEATURE_COLUMNS = ["feature_1_norm", "feature_2_norm", "feature_3", "feature_4"]
 TARGET_COLUMN = "target"
 ID_COLUMN = "id"
+TIMESTAMP_COLUMN = "timestamp"  # Add this
+
 
 # Default values
 DEFAULT_BATCH_SIZE = 1024

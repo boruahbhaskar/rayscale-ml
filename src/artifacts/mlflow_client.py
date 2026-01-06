@@ -1,22 +1,23 @@
 """
 MLflow client for artifact management.
 """
-import mlflow
-import os
-from pathlib import Path
-from typing import Optional, Dict, Any
+
 import logging
+import os
+from typing import Any
+
+import mlflow
 
 logger = logging.getLogger(__name__)
 
 
 class MLflowClient:
     """MLflow client for managing experiments and models."""
-    
-    def __init__(self, tracking_uri: Optional[str] = None):
+
+    def __init__(self, tracking_uri: str | None = None):
         """
         Initialize MLflow client.
-        
+
         Args:
             tracking_uri: MLflow tracking URI. If None, uses default or environment variable.
         """
@@ -24,21 +25,21 @@ class MLflowClient:
             mlflow.set_tracking_uri(tracking_uri)
         elif os.environ.get("MLFLOW_TRACKING_URI"):
             mlflow.set_tracking_uri(os.environ["MLFLOW_TRACKING_URI"])
-        
+
         self.client = mlflow.tracking.MlflowClient()
-    
+
     def log_model(self, model, artifact_path: str, **kwargs):
         """Log a model to MLflow."""
         import mlflow.pytorch
-        
+
         mlflow.pytorch.log_model(model, artifact_path, **kwargs)
-    
+
     def load_model(self, model_uri: str):
         """Load a model from MLflow."""
         import mlflow.pytorch
-        
+
         return mlflow.pytorch.load_model(model_uri)
-    
+
     def create_experiment(self, name: str) -> str:
         """Create a new experiment."""
         try:
@@ -48,24 +49,26 @@ class MLflowClient:
         except Exception as e:
             logger.warning(f"Experiment {name} may already exist: {e}")
             return mlflow.get_experiment_by_name(name).experiment_id
-    
-    def start_run(self, experiment_name: str, run_name: Optional[str] = None, **kwargs):
+
+    def start_run(self, experiment_name: str, run_name: str | None = None, **kwargs):
         """Start an MLflow run."""
         experiment_id = self.create_experiment(experiment_name)
-        return mlflow.start_run(experiment_id=experiment_id, run_name=run_name, **kwargs)
-    
-    def log_params(self, params: Dict[str, Any]):
+        return mlflow.start_run(
+            experiment_id=experiment_id, run_name=run_name, **kwargs
+        )
+
+    def log_params(self, params: dict[str, Any]):
         """Log parameters to current run."""
         mlflow.log_params(params)
-    
-    def log_metrics(self, metrics: Dict[str, float], step: Optional[int] = None):
+
+    def log_metrics(self, metrics: dict[str, float], step: int | None = None):
         """Log metrics to current run."""
         mlflow.log_metrics(metrics, step=step)
-    
-    def log_artifact(self, local_path: str, artifact_path: Optional[str] = None):
+
+    def log_artifact(self, local_path: str, artifact_path: str | None = None):
         """Log an artifact to current run."""
         mlflow.log_artifact(local_path, artifact_path)
-    
+
     def get_latest_model(self, experiment_name: str, model_name: str):
         """Get the latest version of a model from MLflow Model Registry."""
         try:

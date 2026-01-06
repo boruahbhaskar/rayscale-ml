@@ -1,14 +1,15 @@
 """Data schemas and validation for the ML platform."""
 
-from typing import Dict, List, Optional, Any
 from collections.abc import MutableMapping
+from typing import Any
+
 import pyarrow as pa
 from pydantic import BaseModel, Field, validator
 
 from src.config.constants import (
     FEATURE_COLUMNS,
-    TARGET_COLUMN,
     ID_COLUMN,
+    TARGET_COLUMN,
     TIMESTAMP_COLUMN,
     FeatureType,
 )
@@ -16,22 +17,20 @@ from src.config.constants import (
 
 class FeatureSchema(BaseModel):
     """Schema for a single feature."""
-    
+
     name: str
     dtype: str
     feature_type: FeatureType
-    description: Optional[str] = None
+    description: str | None = None
     required: bool = True
-    allowed_range: Optional[tuple[float, float]] = None
-    allowed_values: Optional[List[Any]] = None
-    metadata: Optional[Dict[str, Any]] = None
-    
+    allowed_range: tuple[float, float] | None = None
+    allowed_values: list[Any] | None = None
+    metadata: dict[str, Any] | None = None
+
     @validator("dtype")
     def validate_dtype(cls, v: str) -> str:
         """Validate dtype."""
-        valid_dtypes = [
-            "float32", "float64", "int32", "int64", "string", "bool"
-        ]
+        valid_dtypes = ["float32", "float64", "int32", "int64", "string", "bool"]
         if v not in valid_dtypes:
             raise ValueError(f"Invalid dtype. Must be one of: {valid_dtypes}")
         return v
@@ -48,7 +47,7 @@ class FeatureSchema(BaseModel):
         base = super().dict(*args, **kwargs)
 
         class _FeatureDict(MutableMapping):
-            def __init__(self, data: Dict[str, Any]):
+            def __init__(self, data: dict[str, Any]):
                 self._data = dict(data)
                 self._meta = None
 
@@ -98,36 +97,38 @@ class FeatureSchema(BaseModel):
 
 class DatasetSchema(BaseModel):
     """Schema for a dataset."""
-    
+
     name: str
     version: str
-    features: Dict[str, FeatureSchema]
-    target: Optional[FeatureSchema] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    features: dict[str, FeatureSchema]
+    target: FeatureSchema | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 def get_feature_schema() -> pa.Schema:
     """
     Get PyArrow schema for features.
-    
+
     Returns:
         PyArrow schema for the dataset.
     """
-    return pa.schema([
-        (ID_COLUMN, pa.int64()),
-        (FEATURE_COLUMNS[0], pa.float32()),
-        (FEATURE_COLUMNS[1], pa.float32()),
-        (FEATURE_COLUMNS[2], pa.float32()),
-        (FEATURE_COLUMNS[3], pa.float32()),
-        (TIMESTAMP_COLUMN, pa.timestamp('s')),  # Add this
-        (TARGET_COLUMN, pa.int64()),
-    ])
+    return pa.schema(
+        [
+            (ID_COLUMN, pa.int64()),
+            (FEATURE_COLUMNS[0], pa.float32()),
+            (FEATURE_COLUMNS[1], pa.float32()),
+            (FEATURE_COLUMNS[2], pa.float32()),
+            (FEATURE_COLUMNS[3], pa.float32()),
+            (TIMESTAMP_COLUMN, pa.timestamp('s')),  # Add this
+            (TARGET_COLUMN, pa.int64()),
+        ]
+    )
 
 
 def get_processed_schema() -> pa.Schema:
     """
     Get PyArrow schema for processed (normalized) features.
-    
+
     Returns:
         PyArrow schema for the processed dataset.
     """
@@ -139,39 +140,42 @@ def get_processed_schema() -> pa.Schema:
             processed_features.append(feature)  # Already normalized
         else:
             processed_features.append(f"{feature}_norm")  # Add _norm suffix
-    
-    return pa.schema([
-        (ID_COLUMN, pa.int64()),
-        (processed_features[0], pa.float32()),
-        (processed_features[1], pa.float32()),
-        (processed_features[2], pa.float32()),
-        (processed_features[3], pa.float32()),
-        (TIMESTAMP_COLUMN, pa.timestamp('s')),
-        (TARGET_COLUMN, pa.int64()),
-    ])
+
+    return pa.schema(
+        [
+            (ID_COLUMN, pa.int64()),
+            (processed_features[0], pa.float32()),
+            (processed_features[1], pa.float32()),
+            (processed_features[2], pa.float32()),
+            (processed_features[3], pa.float32()),
+            (TIMESTAMP_COLUMN, pa.timestamp('s')),
+            (TARGET_COLUMN, pa.int64()),
+        ]
+    )
+
 
 # def validate_dataset_schema(dataset) -> None:
 #     """
 #     Validate dataset schema against expected schema.
-    
+
 #     Args:
 #         dataset: Ray dataset to validate.
-        
+
 #     Raises:
 #         ValueError: If schema doesn't match.
 #     """
 #     from loguru import logger
-    
+
 #     expected_schema = get_feature_schema()
 #     actual_schema = dataset.schema()
-    
+
 #     logger.debug(f"Expected schema: {expected_schema}")
 #     logger.debug(f"Actual schema: {actual_schema}")
-    
+
 #     # Compare column names first
 #     expected_names = list(expected_schema.names)
 #     actual_names = list(actual_schema.names)
-    
+
 #     if set(expected_names) != set(actual_names):
 #         error_msg = (
 #             f"Schema mismatch.\n"
@@ -181,7 +185,7 @@ def get_processed_schema() -> pa.Schema:
 #         )
 #         logger.error(error_msg)
 #         raise ValueError(error_msg)
-    
+
 #     # Helper to map pyarrow types to coarse categories
 #     def _coarse_type(t: pa.DataType) -> str:
 #         if pa.types.is_floating(t):
@@ -193,20 +197,20 @@ def get_processed_schema() -> pa.Schema:
 #         if pa.types.is_string(t) or pa.types.is_large_string(t):
 #             return "string"
 #         return str(t)
-    
+
 #     # Compare each field by coarse type (allowing float32 vs float64)
 #     for name in expected_names:
 #         # Get field from schema - correct way in PyArrow
 #         exp_field = expected_schema.field(name)
 #         act_field = actual_schema.field(name)
-        
+
 #         exp_t = exp_field.type
 #         act_t = act_field.type
-        
+
 #         # Allow float32/float64 and int32/int64 conversions
 #         exp_coarse = _coarse_type(exp_t)
 #         act_coarse = _coarse_type(act_t)
-        
+
 #         if exp_coarse != act_coarse:
 #             error_msg = (
 #                 f"Type mismatch for column '{name}': "
@@ -214,26 +218,26 @@ def get_processed_schema() -> pa.Schema:
 #             )
 #             logger.error(error_msg)
 #             raise ValueError(error_msg)
-    
+
 #     logger.info("Dataset schema validation passed")
 
 # def validate_dataset_schema(dataset) -> None:
 #     """
 #     Validate dataset schema against expected schema.
-    
+
 #     Args:
 #         dataset: Ray dataset to validate.
-        
+
 #     Raises:
 #         ValueError: If schema doesn't match.
 #     """
 #     from loguru import logger
-    
+
 #     expected_schema = get_feature_schema()
-    
+
 #     # Ray Data returns a different schema object - get the pyarrow schema
 #     actual_schema = dataset.schema()
-    
+
 #     # Convert Ray schema to PyArrow schema if needed
 #     if hasattr(actual_schema, 'to_arrow_schema'):
 #         actual_schema = actual_schema.to_arrow_schema()
@@ -246,14 +250,14 @@ def get_processed_schema() -> pa.Schema:
 #             pa.field(name, pa.type_for_alias(str(dtype)))
 #             for name, dtype in actual_schema.items()
 #         ])
-    
+
 #     logger.debug(f"Expected schema: {expected_schema}")
 #     logger.debug(f"Actual schema: {actual_schema}")
-    
+
 #     # Compare column names first
 #     expected_names = list(expected_schema.names)
 #     actual_names = list(actual_schema.names)
-    
+
 #     if set(expected_names) != set(actual_names):
 #         error_msg = (
 #             f"Schema mismatch.\n"
@@ -264,7 +268,7 @@ def get_processed_schema() -> pa.Schema:
 #         )
 #         logger.error(error_msg)
 #         raise ValueError(error_msg)
-    
+
 #     # Helper to map pyarrow types to coarse categories
 #     def _coarse_type(t: pa.DataType) -> str:
 #         if pa.types.is_floating(t):
@@ -276,93 +280,93 @@ def get_processed_schema() -> pa.Schema:
 #         if pa.types.is_string(t) or pa.types.is_large_string(t):
 #             return "string"
 #         return str(t)
-    
+
 #     # Compare each field by coarse type (allowing float32 vs float64)
 #     mismatches = []
 #     for name in expected_names:
 #         # Get field from pyarrow schema
 #         exp_field = expected_schema.field(name)
 #         act_field = actual_schema.field(name)
-        
+
 #         exp_t = exp_field.type
 #         act_t = act_field.type
-        
+
 #         # Allow float32/float64 and int32/int64 conversions
 #         exp_coarse = _coarse_type(exp_t)
 #         act_coarse = _coarse_type(act_t)
-        
+
 #         if exp_coarse != act_coarse:
 #             mismatches.append(
 #                 f"Column '{name}': Expected {exp_coarse} ({exp_t}), "
 #                 f"got {act_coarse} ({act_t})"
 #             )
-    
+
 #     if mismatches:
 #         error_msg = "Type mismatches found:\n" + "\n".join(mismatches)
 #         logger.error(error_msg)
 #         raise ValueError(error_msg)
-    
+
 #     logger.info("Dataset schema validation passed")
 
 # def validate_dataset_schema(dataset) -> None:
 #     """
 #     Validate dataset schema against expected schema.
-    
+
 #     Args:
 #         dataset: Ray dataset to validate.
-        
+
 #     Raises:
 #         ValueError: If schema doesn't match.
 #     """
 #     from loguru import logger
-    
+
 #     expected_schema = get_feature_schema()
-    
+
 #     # Get actual column names from dataset
 #     actual_columns = dataset.columns()
 #     expected_columns = expected_schema.names
-    
+
 #     logger.debug(f"Expected columns: {sorted(expected_columns)}")
 #     logger.debug(f"Actual columns: {sorted(actual_columns)}")
-    
+
 #     # Compare sets of column names
 #     expected_set = set(expected_columns)
 #     actual_set = set(actual_columns)
-    
+
 #     if expected_set != actual_set:
 #         missing = expected_set - actual_set
 #         extra = actual_set - expected_set
-        
+
 #         error_msg = (
 #             f"Schema mismatch.\n"
 #             f"Expected columns: {sorted(expected_columns)}\n"
 #             f"Actual columns: {sorted(actual_columns)}\n"
 #         )
-        
+
 #         if missing:
 #             error_msg += f"Missing columns: {sorted(missing)}\n"
 #         if extra:
 #             error_msg += f"Extra columns: {sorted(extra)}"
-        
+
 #         logger.error(error_msg)
 #         raise ValueError(error_msg)
-    
+
 #     logger.info("Dataset schema validation passed")
 
 
 def validate_dataset_schema(dataset, is_processed: bool = False) -> None:
     """
     Validate dataset schema against expected schema.
-    
+
     Args:
         dataset: Ray dataset to validate.
         is_processed: Whether to validate against processed schema.
-        
+
     Raises:
         ValueError: If schema doesn't match.
     """
     from loguru import logger
-    
+
     # Choose the appropriate schema
     if is_processed:
         expected_schema = get_processed_schema()
@@ -370,43 +374,43 @@ def validate_dataset_schema(dataset, is_processed: bool = False) -> None:
     else:
         expected_schema = get_feature_schema()
         logger.debug("Validating against raw schema")
-    
+
     actual_schema = dataset.schema()
-    
+
     logger.debug(f"Expected schema: {expected_schema}")
     logger.debug(f"Actual schema: {actual_schema}")
-    
+
     logger.debug(f"Expected schema: {expected_schema}")
     logger.debug(f"Actual schema: {actual_schema}")
-    
+
     # Get column names from expected schema
     expected_names = list(expected_schema.names)
-    
+
     # Get column names from Ray schema
     actual_names = actual_schema.names
-    
+
     # Compare column names
     if set(expected_names) != set(actual_names):
         missing = set(expected_names) - set(actual_names)
         extra = set(actual_names) - set(expected_names)
-        
+
         error_msg = (
             f"Schema mismatch.\n"
             f"Expected columns: {sorted(expected_names)}\n"
             f"Actual columns: {sorted(actual_names)}\n"
         )
-        
+
         if missing:
             error_msg += f"Missing columns: {sorted(missing)}\n"
         if extra:
             error_msg += f"Extra columns: {sorted(extra)}"
-        
+
         logger.error(error_msg)
         raise ValueError(error_msg)
-    
+
     # Get types from Ray schema
     actual_types = actual_schema.types
-    
+
     # Map Ray type strings to PyArrow types for comparison
     type_mapping = {
         "int64": pa.int64(),
@@ -418,7 +422,7 @@ def validate_dataset_schema(dataset, is_processed: bool = False) -> None:
         "string": pa.string(),
         "bool": pa.bool_(),
     }
-    
+
     # Helper to normalize type names for comparison
     def normalize_type_name(type_str_or_obj):
         """Convert type to normalized string for comparison."""
@@ -435,9 +439,9 @@ def validate_dataset_schema(dataset, is_processed: bool = False) -> None:
                 return 'string'
             elif pa.types.is_boolean(type_str_or_obj):
                 return 'bool'
-        
+
         return str(type_str_or_obj)
-    
+
     # Compare types column by column
     type_mismatches = []
     for i, col_name in enumerate(expected_names):
@@ -446,14 +450,14 @@ def validate_dataset_schema(dataset, is_processed: bool = False) -> None:
             actual_idx = actual_names.index(col_name)
         except ValueError:
             continue  # Already caught in column name check
-        
+
         # Get expected type from PyArrow schema
         expected_field = expected_schema.field(col_name)
         expected_type = expected_field.type
-        
+
         # Get actual type from Ray schema
         actual_type_str = actual_types[actual_idx]
-        
+
         # Normalize both types for comparison
         expected_norm = normalize_type_name(expected_type)
         actual_norm = normalize_type_name(actual_type_str)
@@ -462,7 +466,7 @@ def validate_dataset_schema(dataset, is_processed: bool = False) -> None:
         if 'timestamp' in expected_norm.lower() and 'timestamp' in actual_norm.lower():
             # Both are timestamps - allow any precision
             continue
-        
+
         # Allow some type flexibility:
         # - float32 <-> float64 (both are floating point)
         # - int32 <-> int64 (both are integers)
@@ -470,7 +474,7 @@ def validate_dataset_schema(dataset, is_processed: bool = False) -> None:
         actual_is_float = 'float' in actual_norm or 'double' in actual_norm
         expected_is_int = 'int' in expected_norm
         actual_is_int = 'int' in actual_norm
-        
+
         if expected_is_float and actual_is_float:
             # Both are floating point types - allow
             continue
@@ -482,46 +486,41 @@ def validate_dataset_schema(dataset, is_processed: bool = False) -> None:
                 f"Column '{col_name}': Expected {expected_norm} ({expected_type}), "
                 f"got {actual_norm} ({actual_type_str})"
             )
-    
+
     if type_mismatches:
         error_msg = "Type mismatches found:\n" + "\n".join(type_mismatches)
         logger.error(error_msg)
         raise ValueError(error_msg)
-    
+
     logger.info("Dataset schema validation passed")
+
 
 class TrainingDataSchema(BaseModel):
     """Schema for training data."""
-    
-    features: List[List[float]] = Field(
-        ..., description="List of feature vectors"
-    )
-    targets: Optional[List[float]] = Field(
-        None, description="List of target values"
-    )
-    feature_names: Optional[List[str]] = Field(
-        None, description="Names of features"
-    )
-    
+
+    features: list[list[float]] = Field(..., description="List of feature vectors")
+    targets: list[float] | None = Field(None, description="List of target values")
+    feature_names: list[str] | None = Field(None, description="Names of features")
+
     @validator("features")
-    def validate_features(cls, v: List[List[float]]) -> List[List[float]]:
+    def validate_features(cls, v: list[list[float]]) -> list[list[float]]:
         """Validate features."""
         if not v:
             raise ValueError("Features cannot be empty")
-        
+
         # Check all feature vectors have same length
         lengths = {len(vec) for vec in v}
         if len(lengths) > 1:
             raise ValueError("All feature vectors must have same length")
-        
+
         return v
-    
+
     @validator("targets")
-    def validate_targets(cls, v: Optional[List[float]], values: dict) -> Optional[List[float]]:
+    def validate_targets(
+        cls, v: list[float] | None, values: dict
+    ) -> list[float] | None:
         """Validate targets."""
         if v is not None:
             if "features" in values and len(v) != len(values["features"]):
-                raise ValueError(
-                    "Targets length must match features length"
-                )
+                raise ValueError("Targets length must match features length")
         return v

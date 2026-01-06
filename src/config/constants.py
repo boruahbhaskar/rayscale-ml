@@ -6,6 +6,7 @@ from pathlib import Path
 
 class DatasetSplit(str, Enum):
     """Dataset split types."""
+
     TRAIN = "train"
     VALIDATION = "validation"
     TEST = "test"
@@ -14,6 +15,7 @@ class DatasetSplit(str, Enum):
 
 class FeatureType(str, Enum):
     """Feature types."""
+
     NUMERICAL = "numerical"
     CATEGORICAL = "categorical"
     TEXT = "text"
@@ -23,6 +25,7 @@ class FeatureType(str, Enum):
 
 class ModelFramework(str, Enum):
     """Model frameworks."""
+
     PYTORCH = "pytorch"
     TENSORFLOW = "tensorflow"
     SKLEARN = "sklearn"

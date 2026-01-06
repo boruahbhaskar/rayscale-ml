@@ -1,6 +1,5 @@
 """Tests for configuration settings."""
 
-import os
 from pathlib import Path
 
 import pytest
@@ -12,6 +11,7 @@ from src.config import settings
 def test_settings_import():
     """Test that settings can be imported successfully."""
     from src.config.settings import Settings
+
     assert Settings is not None
 
 
@@ -72,11 +72,12 @@ def test_settings_with_env_vars(monkeypatch):
     monkeypatch.setenv("ENVIRONMENT", "testing")
     monkeypatch.setenv("LOG_LEVEL", "DEBUG")
     monkeypatch.setenv("RAY_NUM_CPUS", "8")
-    
+
     # Need to reload settings to pick up env vars
     from src.config.settings import Settings
+
     test_settings = Settings()
-    
+
     assert test_settings.environment == "testing"
     assert test_settings.log_level == "DEBUG"
     assert test_settings.ray_num_cpus == 8
@@ -85,7 +86,7 @@ def test_settings_with_env_vars(monkeypatch):
 def test_invalid_environment_validation():
     """Test that invalid environment raises ValidationError."""
     from src.config.settings import Settings
-    
+
     with pytest.raises(ValidationError):
         Settings(environment="invalid_env")
 
@@ -93,7 +94,7 @@ def test_invalid_environment_validation():
 def test_settings_to_dict():
     """Test that settings can be converted to dictionary."""
     settings_dict = settings.dict()
-    
+
     assert isinstance(settings_dict, dict)
     assert "environment" in settings_dict
     assert "log_level" in settings_dict
@@ -103,14 +104,13 @@ def test_settings_to_dict():
 def test_settings_json_serializable():
     """Test that settings are JSON serializable."""
     import json
-    
+
     settings_dict = settings.dict()
     # Convert Path objects to strings for JSON serialization
     serializable_dict = {
-        k: str(v) if isinstance(v, Path) else v
-        for k, v in settings_dict.items()
+        k: str(v) if isinstance(v, Path) else v for k, v in settings_dict.items()
     }
-    
+
     json_str = json.dumps(serializable_dict)
     assert isinstance(json_str, str)
     assert "environment" in json_str
@@ -122,19 +122,16 @@ def test_feature_engineering_settings():
     assert settings.feature_scaling_method in ["standard", "minmax", "robust"]
 
 
-@pytest.mark.parametrize("path_setting", [
-    "data_dir",
-    "model_dir", 
-    "log_dir",
-    "experiments_dir"
-])
+@pytest.mark.parametrize(
+    "path_setting", ["data_dir", "model_dir", "log_dir", "experiments_dir"]
+)
 def test_path_creation(path_setting):
     """Test that paths can be created."""
     path = getattr(settings, path_setting)
-    
+
     # Try to create the directory
     path.mkdir(parents=True, exist_ok=True)
-    
+
     # Check it exists
     assert path.exists()
     assert path.is_dir()
@@ -158,7 +155,7 @@ def test_settings_repr():
 def test_settings_copy():
     """Test that settings can be copied."""
     from copy import deepcopy
-    
+
     settings_copy = deepcopy(settings)
     assert settings_copy.environment == settings.environment
     assert settings_copy.log_level == settings.log_level

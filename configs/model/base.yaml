@@ -1,0 +1,50 @@
+# Tabular neural network configuration
+
+model:
+  name: "tabular_nn"
+  type: "neural_network"
+  framework: "pytorch"
+  
+  # Architecture configuration
+  architecture: "mlp"
+  hyperparameters:
+    input_size: 4
+    hidden_sizes: [64, 32]
+    dropout_rate: 0.2
+    use_batch_norm: true
+    activation: "relu"
+  
+  # Training configuration
+  training:
+    learning_rate: 0.001
+    batch_size: 1024
+    num_epochs: 10
+    weight_decay: 0.0
+    validation_split: 0.2
+    
+    # Optimization
+    optimizer: "adam"
+    scheduler: null  # "reduce_on_plateau" or "cosine"
+    
+    # Early stopping
+    early_stopping:
+      enabled: true
+      patience: 10
+      min_delta: 0.001
+      restore_best_weights: true
+  
+  # Evaluation configuration
+  evaluation:
+    metrics:
+      - "mse"
+      - "rmse"
+      - "mae"
+      - "r2"
+    test_split: 0.15
+  
+  # Saving configuration
+  saving:
+    format: "pytorch"
+    save_best_only: true
+    monitor: "val_loss"
+    mode: "min"

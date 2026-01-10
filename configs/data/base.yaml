@@ -1,0 +1,39 @@
+# Base data configuration
+
+data:
+  # Data source configuration
+  source:
+    type: "parquet"
+    path: "data/raw/synthetic_data.parquet"
+    schema_validation: true
+  
+  # Preprocessing configuration
+  preprocessing:
+    scaling_method: "standard"
+    clip_outliers: true
+    clip_threshold: 3.0
+  
+  # Feature engineering configuration
+  feature_engineering:
+    enabled: true
+    interactions:
+      - ["feature_1_norm", "feature_2_norm"]
+    polynomials:
+      - column: "feature_1_norm"
+        degree: 2
+      - column: "feature_2_norm"
+        degree: 2
+  
+  # Dataset splitting configuration
+  splitting:
+    train_size: 0.7
+    val_size: 0.15
+    test_size: 0.15
+    strategy: "random"
+    seed: 42
+  
+  # Feature store configuration
+  feature_store:
+    base_path: "data/feature_store"
+    versioning: "timestamp"
+    compute_stats: true

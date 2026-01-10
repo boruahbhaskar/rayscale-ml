@@ -1,0 +1,114 @@
+# Hyperparameter tuning configuration
+
+experiment:
+  name: "tabular_nn_tuning"
+  description: "Hyperparameter tuning for tabular neural network"
+  tags:
+    task: "tuning"
+    model: "tabular_nn"
+    framework: "ray_tune"
+
+# Data configuration
+data:
+  dataset_name: "features"
+  dataset_version: "latest"
+  validation_split: 0.2
+
+# Tuning configuration
+tune:
+  # Search algorithm
+  search_alg: "optuna"
+  
+  # Search space
+  search_space:
+    learning_rate:
+      type: "loguniform"
+      min: 1e-4
+      max: 1e-2
+    
+    batch_size:
+      type: "choice"
+      values: [64, 128, 256, 512]
+    
+    hidden_dim:
+      type: "choice"
+      values: [32, 64, 128, 256]
+    
+    dropout_rate:
+      type: "uniform"
+      min: 0.1
+      max: 0.5
+    
+    num_layers:
+      type: "choice"
+      values: [2, 3, 4]
+  
+  # Tuning parameters
+  num_samples: 20
+  max_concurrent_trials: 4
+  grace_period: 1
+  reduction_factor: 2
+  
+  # Stopping criteria
+  max_iterations: 50
+  time_budget_s: 3600  # 1 hour
+  
+  # Metric to optimize
+  metric: "val_loss"
+  mode: "min"
+  
+  # Checkpointing
+  checkpoint_freq: 5
+  checkpoint_at_end: true
+  
+  # Resource allocation
+  resources_per_trial:
+    cpu: 2
+    gpu: 0
+    memory: 4096  # 4GB
+  
+  # Scheduler
+  scheduler: "asha"
+  scheduler_params:
+    max_t: 50
+    grace_period: 1
+    reduction_factor: 2
+
+# Model configuration
+model:
+  name: "tabular_nn"
+  architecture: "mlp"
+  fixed_hyperparameters:
+    input_size: 4
+    use_batch_norm: true
+    activation: "relu"
+
+# Training configuration (for each trial)
+training:
+  num_epochs: 10
+  validation_split: 0.2
+  early_stopping_patience: 5
+  
+  # Ray configuration
+  ray:
+    num_workers: 1
+    use_gpu: false
+
+# Output configuration
+output:
+  output_dir: "experiments/tuning_results"
+  save_best_model: true
+  save_all_checkpoints: false
+  
+  # MLflow integration
+  mlflow:
+    enabled: true
+    experiment_name: "tuning_experiments"
+    track_artifacts: true
+  
+  # Analysis
+  analysis:
+    generate_reports: true
+    save_analysis: true
+    plot_parallel_coordinates: true
+    plot_contour: true

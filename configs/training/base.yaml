@@ -1,36 +1,140 @@
-# Training configuration
-experiment_name: "base_training"
-run_name: "training_run"
+# # Training configuration
+# experiment_name: "base_training"
+# run_name: "training_run"
 
+# data:
+#   train_path: "data/processed/preprocessed_data.parquet"
+#   test_size: 0.2
+#   random_state: 42
+#   target_column: "target"
+
+# model:
+#   name: "random_forest"
+#   type: "classification"
+#   params:
+#     n_estimators: 100
+#     max_depth: 10
+#     random_state: 42
+
+# training:
+#   n_cpus: 4
+#   num_workers: 1
+#   use_gpu: false
+#   cpus_per_worker: 1
+#   gpus_per_worker: 0 
+#   max_epochs: 10
+#   batch_size: 32
+#   learning_rate: 0.001
+
+# evaluation:
+#   metrics: ["accuracy", "precision", "recall", "f1"]
+#   cv_folds: 5
+
+# mlflow:
+#   tracking_uri: "sqlite:///mlflow.db"
+#   experiment_name: "rayscale_experiments"
+#   registry_uri: "sqlite:///mlflow.db"
+
+# Base training configuration
+
+experiment:
+  name: "tabular_nn_experiment"
+  description: "Training tabular neural network"
+  tags:
+    framework: "pytorch"
+    dataset: "synthetic"
+    model_type: "mlp"
+
+# Data configuration
 data:
-  train_path: "data/processed/preprocessed_data.parquet"
-  test_size: 0.2
-  random_state: 42
-  target_column: "target"
+  dataset_name: "features"
+  dataset_version: "latest"
+  transformations: []
+  batch_size: 1024
+  shuffle: true
+  num_workers: 2
 
+# Model configuration
 model:
-  name: "random_forest"
-  type: "classification"
-  params:
-    n_estimators: 100
-    max_depth: 10
-    random_state: 42
+  name: "tabular_nn"
+  architecture: "mlp"
+  hyperparameters:
+    input_size: 4
+    hidden_sizes: [64, 32, 16]
+    dropout_rate: 0.2
+    use_batch_norm: true
+    activation: "relu"
 
+# Training configuration
 training:
-  n_cpus: 4
-  num_workers: 1
-  use_gpu: false
-  cpus_per_worker: 1
-  gpus_per_worker: 0 
-  max_epochs: 10
-  batch_size: 32
+  # Basic training parameters
   learning_rate: 0.001
+  num_epochs: 10
+  weight_decay: 0.0001
+  validation_split: 0.2
+  
+  # Optimizer
+  optimizer: "adam"
+  optimizer_params:
+    beta1: 0.9
+    beta2: 0.999
+    eps: 1e-8
+  
+  # Scheduler
+  scheduler: null
+  scheduler_params: {}
+  
+  # Callbacks
+  callbacks:
+    - type: "early_stopping"
+      patience: 10
+      min_delta: 0.001
+      restore_best_weights: true
+    
+    - type: "learning_rate_scheduler"
+      initial_lr: 0.001
+      decay_factor: 0.5
+      patience: 5
+      min_lr: 1e-6
+  
+  # Distributed training (Ray)
+  ray:
+    enabled: true
+    num_workers: 2
+    use_gpu: false
+    resources_per_worker:
+      CPU: 2
+      GPU: 0
+    
+    # Ray Trainer configuration
+    trainer_config:
+      run_name: "tabular_nn_training"
+      enable_mlflow: true
+      verbose: 1
+  
+  # Training kwargs
+  training_kwargs:
+    checkpoint_frequency: 5
+    log_frequency: 10
 
-evaluation:
-  metrics: ["accuracy", "precision", "recall", "f1"]
-  cv_folds: 5
-
-mlflow:
-  tracking_uri: "sqlite:///mlflow.db"
-  experiment_name: "rayscale_experiments"
-  registry_uri: "sqlite:///mlflow.db"
+# Output configuration
+output:
+  output_dir: "models/tabular_nn"
+  save_format: "pytorch"
+  save_optimizer: false
+  include_metadata: true
+  
+  # MLflow logging
+  mlflow:
+    enabled: true
+    experiment_name: "tabular_nn"
+    tags:
+      training_config: "base"
+      environment: "development"
+  
+  # Artifacts to save
+  artifacts:
+    - "model"
+    - "metrics"
+    - "config"
+    - "logs"

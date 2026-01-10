@@ -1,7 +1,7 @@
 """Pydantic settings configuration for the ML platform."""
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional, Dict
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -21,9 +21,14 @@ class Settings(BaseSettings):
     experiments_dir: Path = Path("experiments/")
 
     # MLflow
-    mlflow_tracking_uri: str = "http://localhost:5000"
+    mlflow_tracking_uri: str = "sqlite:///mlflow.db" #"http://localhost:5000"
     mlflow_experiment_name: str = "rayscale-ml"
     mlflow_registry_uri: str = "sqlite:///mlflow.db"
+    
+    # For remote servers, add authentication
+    mlflow_username: Optional[str] = None
+    mlflow_password: Optional[str] = None
+    mlflow_token: Optional[str] = None
 
     # Ray
     ray_address: str | None = None

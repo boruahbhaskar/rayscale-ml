@@ -1,0 +1,98 @@
+{
+  "version": "ce3cdf16",
+  "schema": {
+    "feature_1_norm": "double",
+    "feature_2_norm": "double",
+    "feature_3": "double",
+    "feature_4": "double",
+    "target": "int64",
+    "id": "int64",
+    "timestamp": "timestamp[ns]",
+    "feature_1_norm_feature_2_norm_interaction": "double",
+    "feature_1_norm_poly_2": "double",
+    "feature_2_norm_poly_2": "double",
+    "feature_3_log": "double",
+    "feature_4_log": "double"
+  },
+  "feature_stats": {
+    "feature_1_norm": {
+      "mean": -0.08987463419329504,
+      "std": 0.6961071243399783,
+      "min": -1.4785219903674274,
+      "max": 1.8657745111447566,
+      "count": 50.0,
+      "null_count": 0.0
+    },
+    "feature_2_norm": {
+      "mean": -0.0010651923989144962,
+      "std": 0.9516969742390382,
+      "min": -1.9596701238797756,
+      "max": 2.463242112485286,
+      "count": 50.0,
+      "null_count": 0.0
+    },
+    "feature_3": {
+      "mean": -0.1412538753834845,
+      "std": 0.9977962680489413,
+      "min": -2.6197451040897444,
+      "max": 1.8861859012105302,
+      "count": 50.0,
+      "null_count": 0.0
+    },
+    "feature_4": {
+      "mean": 0.06910984128735403,
+      "std": 1.05240618871133,
+      "min": -1.9875689146008928,
+      "max": 2.720169166589619,
+      "count": 50.0,
+      "null_count": 0.0
+    },
+    "feature_1_norm_feature_2_norm_interaction": {
+      "mean": 0.04693787494894572,
+      "std": 0.46490048018416985,
+      "min": -0.7671569361859026,
+      "max": 1.2854844226612963,
+      "count": 50.0,
+      "null_count": 0.0
+    },
+    "feature_1_norm_poly_2": {
+      "mean": 0.4829512758571151,
+      "std": 0.6857555231252284,
+      "min": 0.00016904919240478452,
+      "max": 3.4811145264374552,
+      "count": 50.0,
+      "null_count": 0.0
+    },
+    "feature_2_norm_poly_2": {
+      "mean": 0.8876137227950727,
+      "std": 1.3517347461276468,
+      "min": 0.005542194374263247,
+      "max": 6.067561704720975,
+      "count": 50.0,
+      "null_count": 0.0
+    },
+    "feature_3_log": {
+      "mean": 0.535947877763411,
+      "std": 0.32646199002548904,
+      "min": 0.005100427320749408,
+      "max": 1.2864036101236742,
+      "count": 50.0,
+      "null_count": 0.0
+    },
+    "feature_4_log": {
+      "mean": 0.5822374324694135,
+      "std": 0.3024838914761454,
+      "min": 0.026168474627790175,
+      "max": 1.3137691421407862,
+      "count": 50.0,
+      "null_count": 0.0
+    }
+  },
+  "created_at": "2026-01-06T19:40:12.778326",
+  "num_rows": 1000,
+  "partitions": [],
+  "description": "Engineered features dataset",
+  "tags": {
+    "pipeline": "feature_engineering"
+  }
+}

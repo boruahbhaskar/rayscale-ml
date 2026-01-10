@@ -315,9 +315,22 @@ class TabularNNModel(PyTorchModel):
             architecture: Architecture type ("mlp", "residual", "embedding").
             **kwargs: Model hyperparameters.
         """
-        super().__init__(name, **kwargs)
+
+        # Filter out framework-specific parameters that shouldn't go to TabularMLP
+        mlp_params = {
+            k: v for k, v in kwargs.items() 
+            if k in ['input_size', 'hidden_sizes', 'output_size', 
+                     'dropout_rate', 'use_batch_norm', 'activation',
+                     'num_numerical', 'categorical_dims', 'embedding_dims']
+        }
+        
+
+        super().__init__(name, **mlp_params)
         self.architecture = architecture
         self.model = None
+        # Store all original kwargs for reference
+        self._all_params = kwargs
+
 
     def build(self) -> nn.Module:
         """
@@ -343,26 +356,50 @@ class TabularNNModel(PyTorchModel):
         # Get hyperparameters
         input_size = self.hyperparameters.get("input_size", 4)
 
+        valid_params = {}
+
+
         if self.architecture == "embedding":
             # For embedding architecture, we need special handling
             num_numerical = self.hyperparameters.get("num_numerical", input_size)
             categorical_dims = self.hyperparameters.get("categorical_dims", {})
 
-            self.model = model_class(
-                num_numerical=num_numerical,
-                categorical_dims=categorical_dims,
-                **{
-                    k: v
-                    for k, v in self.hyperparameters.items()
-                    if k not in ["input_size", "num_numerical", "categorical_dims"]
-                },
-            )
+            valid_params = {
+            "num_numerical": num_numerical,
+            "categorical_dims": categorical_dims,
+            **{k: v for k, v in self.hyperparameters.items() 
+               if k in ['embedding_dims', 'hidden_sizes', 'output_size', 
+                       'dropout_rate']}
+            }
+
+            # self.model = model_class(
+            #     num_numerical=num_numerical,
+            #     categorical_dims=categorical_dims,
+            #     **{
+            #         k: v
+            #         for k, v in self.hyperparameters.items()
+            #         if k not in ["input_size", "num_numerical", "categorical_dims"]
+            #     },
+            # )
         else:
             # For MLP and residual architectures
-            self.model = model_class(
-                input_size=input_size,
-                **{k: v for k, v in self.hyperparameters.items() if k != "input_size"},
-            )
+            # self.model = model_class(
+            #     input_size=input_size,
+            #     **{k: v for k, v in self.hyperparameters.items() if k != "input_size"},
+            # )
+
+                   # For MLP and residual architectures - ONLY pass valid parameters
+            valid_mlp_params = [
+                'input_size', 'hidden_sizes', 'output_size', 
+                'dropout_rate', 'use_batch_norm', 'activation'
+            ]
+            valid_params = {
+                k: v for k, v in self.hyperparameters.items() 
+                if k in valid_mlp_params
+            } 
+
+        #logger.debug(f"Building model with params: {list(valid_params.keys())}")
+        self.model = model_class(**valid_params)   
 
         return self.model.to(self.device)
 
@@ -584,6 +621,8 @@ class TabularNNModel(PyTorchModel):
         Args:
             path: Path to save model.
         """
+        import json
+        
         path.parent.mkdir(parents=True, exist_ok=True)
 
         # Save model state

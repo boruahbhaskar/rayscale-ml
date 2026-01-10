@@ -50,7 +50,14 @@ def configure_for_mps() -> bool:
     # Configure MPS
     try:
         # Set cache limit (4GB)
-        torch.backends.mps.set_cache_limit(4 * 1024**3)
+        #torch.backends.mps.set_cache_limit(4 * 1024**3)
+
+        # Try to set cache limit if the attribute exists
+        if hasattr(torch.backends.mps, 'set_cache_limit'):
+            torch.backends.mps.set_cache_limit(0.5)  # Use 50% of GPU memory
+        else:
+            # For older PyTorch versions without set_cache_limit
+            logger.debug("MPS available but set_cache_limit not supported")
 
         # Set memory fraction if needed
         # torch.backends.mps.set_memory_fraction(0.8)

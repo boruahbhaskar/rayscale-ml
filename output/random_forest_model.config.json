@@ -1,0 +1,10 @@
+{
+  "input_size": 10,
+  "hidden_sizes": [
+    64,
+    32
+  ],
+  "dropout_rate": 0.2,
+  "use_batch_norm": true,
+  "activation": "relu"
+}

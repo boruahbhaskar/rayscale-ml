@@ -1,0 +1,27 @@
+{
+  "ray_version": "2.53.0",
+  "training_config": {
+    "model_config": {
+      "input_size": 10,
+      "feature_columns": [
+        "feature_1_norm",
+        "feature_2_norm",
+        "feature_3",
+        "feature_4",
+        "id",
+        "feature_1_norm_feature_2_norm_interaction",
+        "feature_1_norm_poly_2",
+        "feature_2_norm_poly_2",
+        "feature_3_log",
+        "feature_4_log"
+      ],
+      "target_column": "target"
+    },
+    "training_config": {
+      "learning_rate": 0.001,
+      "batch_size": 1024,
+      "num_epochs": 10,
+      "weight_decay": 0.0
+    }
+  }
+}

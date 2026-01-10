@@ -1,14 +1,22 @@
 #!/usr/bin/env python3
 """Train a model using the ML platform."""
 
+# At the very top of train_model.py
+import _path_setup  # This will setup paths
+
+# Now import other standard libraries
 import argparse
-from pathlib import Path
+
 from typing import Any
+import sys
+import os
+from pathlib import Path  # ADD THIS LINE
 
 import yaml
 
 from src.training.orchestrator import TrainingOrchestrator
 from src.utils.logging import configure_logging
+import logging
 
 
 def load_config(config_path: Path) -> dict[str, Any]:
@@ -41,6 +49,8 @@ def train_model(config_path: Path, experiment_name: str = None) -> dict[str, Any
     Returns:
         Training results.
     """
+    logger = logging.getLogger(__name__)  # create logger
+
     logger.info(f"Training model with config: {config_path}")
 
     # Create orchestrator

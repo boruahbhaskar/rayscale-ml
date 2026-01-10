@@ -5,6 +5,7 @@ from typing import Any
 import ray
 import ray.data as rd
 from loguru import logger
+from datetime import datetime
 
 from src.config import settings
 from src.data.feature_store import get_feature_store
@@ -77,10 +78,22 @@ class RayTrainingPipeline(BaseTrainingPipeline):
             f"with {metadata.num_rows} rows"
         )
 
+        logger.info(f"Loaded dataset type: {type(dataset)}")
+        logger.info(f"Dataset attributes: {dir(dataset)}")
+    
+
         # Apply any data transformations
         transformations = data_config.get("transformations", [])
         for transform in transformations:
             dataset = self._apply_transformation(dataset, transform)
+
+            # Check if it's already a Ray Dataset
+        import ray
+        if isinstance(dataset, ray.data.Dataset):
+            logger.info("Dataset is already a Ray Dataset")
+        else:
+            logger.info("Converting dataset to Ray Dataset")
+            dataset = ray.data.from_pandas(dataset)    
 
         return dataset
 
@@ -140,24 +153,94 @@ class RayTrainingPipeline(BaseTrainingPipeline):
 
         return model
 
-    def create_trainer(self) -> RayModelTrainer:
-        """Create Ray model trainer."""
+    # def create_trainer(self) -> RayModelTrainer:
+    #     """Create Ray model trainer."""
+    #     logger.info("Creating Ray model trainer")
+
+    #     training_config = self.config.training_config
+
+    #     # Create trainer
+    #     trainer = RayModelTrainer(
+    #         self.model, **training_config.get("trainer_config", {})
+    #     )
+
+    #     # Add callbacks if specified
+    #     callbacks_config = training_config.get("callbacks", [])
+    #     for callback_config in callbacks_config:
+    #         callback = self._create_callback(callback_config)
+    #         if callback:
+    #             trainer.add_callback(callback)
+
+    #     logger.info("Created Ray model trainer")
+    #     return trainer
+
+    # def create_trainer(self):
+    #     """Create model trainer."""
+    #     logger.info("Creating Ray model trainer")
+        
+    #     # Get model from pipeline
+    #     model = getattr(self, 'model', None)
+    #     if not model:
+    #         raise ValueError("Model not initialized. Call create_model() first.")
+        
+    #     # Prepare trainer configuration
+    #     trainer_config = {
+    #         # Training parameters
+    #         "num_workers": self.config.get("training", {}).get("num_workers", 1),
+    #         "use_gpu": self.config.get("training", {}).get("use_gpu", False),
+    #         "cpus_per_worker": self.config.get("training", {}).get("cpus_per_worker", 1),
+    #         "gpus_per_worker": self.config.get("training", {}).get("gpus_per_worker", 0),
+            
+    #         # DISABLE MLflow in Ray callbacks (handled at orchestrator level)
+    #         "enable_mlflow": False,
+            
+    #         # Run configuration
+    #         "run_name": self.config.get("run_name", f"{model.name}-{datetime.now().strftime('%Y%m%d_%H%M%S')}"),
+            
+    #         # Training hyperparameters (passed to training loop)
+    #         "learning_rate": self.config.get("training", {}).get("learning_rate", 0.001),
+    #         "batch_size": self.config.get("training", {}).get("batch_size", 32),
+    #         "num_epochs": self.config.get("training", {}).get("num_epochs", 10),
+    #         "validation_split": self.config.get("training", {}).get("validation_split", 0.2),
+    #     }
+        
+    #     # Create trainer instance
+    #     from src.models.trainers.ray_trainer import RayModelTrainer
+    #     trainer = RayModelTrainer(model, **trainer_config)
+        
+    #     logger.info("Created Ray model trainer")
+    #     return trainer
+
+    def create_trainer(self):
+        """Create model trainer."""
         logger.info("Creating Ray model trainer")
-
-        training_config = self.config.training_config
-
-        # Create trainer
-        trainer = RayModelTrainer(
-            self.model, **training_config.get("trainer_config", {})
-        )
-
-        # Add callbacks if specified
-        callbacks_config = training_config.get("callbacks", [])
-        for callback_config in callbacks_config:
-            callback = self._create_callback(callback_config)
-            if callback:
-                trainer.add_callback(callback)
-
+        
+        # Get model from pipeline
+        model = getattr(self, 'model', None)
+        if not model:
+            raise ValueError("Model not initialized. Call create_model() first.")
+        
+        # Prepare trainer configuration
+        trainer_config = {
+            # Training parameters
+            "num_workers": getattr(self.config, 'num_workers', 1) if not isinstance(self.config, dict) else self.config.get("training", {}).get("num_workers", 1),
+            "use_gpu": getattr(self.config, 'use_gpu', False) if not isinstance(self.config, dict) else self.config.get("training", {}).get("use_gpu", False),
+            
+            # DISABLE MLflow in Ray callbacks if we have MLflow run ID from orchestrator
+            "enable_mlflow": not hasattr(self, 'mlflow_run_id'),
+            
+            # Run configuration
+            "run_name": getattr(self.config, 'run_name', f"{model.name}-{datetime.now().strftime('%Y%m%d_%H%M%S')}") if not isinstance(self.config, dict) else self.config.get("run_name", f"{model.name}-{datetime.now().strftime('%Y%m%d_%H%M%S')}"),
+        }
+        
+        # Create trainer instance
+        from src.models.trainers.ray_trainer import RayModelTrainer
+        trainer = RayModelTrainer(model, **trainer_config)
+        
+        # Pass MLflow info to trainer if available
+        if hasattr(self, 'mlflow_run_id'):
+            trainer.mlflow_run_id = self.mlflow_run_id
+        
         logger.info("Created Ray model trainer")
         return trainer
 
@@ -193,6 +276,9 @@ class RayTrainingPipeline(BaseTrainingPipeline):
 
         # Load data
         data = self.load_data()
+
+        logger.info(f"=== DEBUG: Data type in pipeline: {type(data)}")
+
 
         # Train
         training_config = self.config.training_config

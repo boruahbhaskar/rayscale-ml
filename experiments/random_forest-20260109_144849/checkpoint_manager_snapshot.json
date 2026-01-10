@@ -1,0 +1,1 @@
+{"version": 0, "checkpoint_results": [{"version": 0, "checkpoint_dir_name": "checkpoint_2026-01-09_14-49-15.108496", "metrics": {"checkpoint_epoch": 10, "checkpoint_loss": 0.5185693502426147}}], "latest_checkpoint_result": {"version": 0, "checkpoint_dir_name": "checkpoint_2026-01-09_14-49-15.108496", "metrics": {"checkpoint_epoch": 10, "checkpoint_loss": 0.5185693502426147}}}
